@@ -14,25 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-def rot13(usertext):
-    k=len(usertext)
-    encryp_text="" 
-    for x in range(0,k):
-         fac = ord(usertext[x])
-         if (fac>=97 and fac<=109)or(fac>=65 and fac<=77):
-             test = ord(usertext[x])+13 
-             encryp_text+= chr(test)
-         elif (fac>=110 and fac<=122) or (fac>=78 and fac<=90):
-             test = ord(usertext[x])-13
-             encryp_text+= chr(test)
-         else:
-             encryp_text+= chr(fac)  
-    return encryp_text   
 import os
 import webapp2
 import jinja2
-
+import re
+  
+     
 template_dir= os.path.join(os.path.dirname('main.py'),'templates')                         
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir))                              
 
@@ -46,18 +33,53 @@ class Handler(webapp2.RequestHandler):
         
     def render(self, template, **kw):
         self.write(self.render_str(template,**kw))
-    
-                          
+                            
 class Mainpage(Handler):
     def get(self):
-        self.render("form13.html")   
+         self.render('signup.html')
+              
     def post(self):
-        usertext = self.request.get('text')
-        text = rot13(usertext)
-        self.render("form13.html", text=text)
+        have_error=False
+        username = self.request.get('username') 
+        password = self.request.get('password')
+        vpassword = self.request.get('vpassword')
+        uemail = self.request.get('uemail')
+        params = dict(username = username, uemail = uemail)
+
+        USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
+        def valid_username(username):
+           return username and USER_RE.match(username)
+
+        PASS_RE = re.compile(r"^.{3,20}$")
+        def valid_password(password):
+           return password and PASS_RE.match(password)
+
+        EMAIL_RE  = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
+        def valid_email(uemail):
+            return not uemail or EMAIL_RE.match(uemail)
         
-app=webapp2.WSGIApplication([('/', Mainpage),
-                            ],                                  
+        if not valid_username(username):
+            params['error_username'] = "That's not a valid username."
+            have_error = True
+
+        if not valid_password(password):
+            params['error_password'] = "That wasn't a valid password."
+            have_error = True
+        elif password != vpassword:
+            params['error_verify'] = "Your passwords didn't match."
+            have_error = True
+
+        if not valid_email(uemail):
+            params['error_email'] = "That's not a valid email."
+            have_error = True
+
+        if  have_error:    
+            self.render('signup.html', ** params)
+        else:           
+            self.render('welcome.html', username=username)
+            
+app = webapp2.WSGIApplication([('/', Mainpage)
+                             ],                                  
                            debug=True)
 
         
